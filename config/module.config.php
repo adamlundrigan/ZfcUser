@@ -8,6 +8,7 @@ return array(
     'controllers' => array(
         'invokables' => array(
             'zfcuser' => 'ZfcUser\Controller\UserController',
+            'zfcuser_console' => 'ZfcUser\Controller\ConsoleController',
         ),
     ),
     'service_manager' => array(
@@ -88,6 +89,21 @@ return array(
                                 'action' => 'changeemail',
                             ),
                         ),                        
+                    ),
+                ),
+            ),
+        ),
+    ),
+    'console' => array(
+        'router' => array(
+            'routes' => array(
+                'user-create' => array(
+                    'options' => array(
+                        'route'    => 'user create',
+                        'defaults' => array(
+                            'controller' => 'zfcuser_console',
+                            'action'     => 'create',
+                        ),
                     ),
                 ),
             ),

@@ -7,11 +7,16 @@ use Zend\ModuleManager\Feature\AutoloaderProviderInterface;
 use Zend\ModuleManager\Feature\ConfigProviderInterface;
 use Zend\ModuleManager\Feature\ServiceProviderInterface;
 use Zend\Stdlib\Hydrator\ClassMethods;
+use Zend\ModuleManager\Feature\ConsoleBannerProviderInterface;
+use Zend\Console\Adapter\AdapterInterface as Console;
+use Zend\ModuleManager\Feature\ConsoleUsageProviderInterface;
 
 class Module implements
     AutoloaderProviderInterface,
     ConfigProviderInterface,
-    ServiceProviderInterface
+    ServiceProviderInterface,
+    ConsoleBannerProviderInterface,
+    ConsoleUsageProviderInterface
 {
     public function getAutoloaderConfig()
     {
@@ -167,5 +172,17 @@ class Module implements
                 },
             ),
         );
+    }
+    
+    public function getConsoleBanner(Console $console)
+    {
+    	return 'ZfcUser';
+    }
+    
+    public function getConsoleUsage(Console $console)
+    {
+    	return array(
+			'user create' => 'Create a new user account.',
+    	);
     }
 }
