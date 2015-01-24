@@ -62,6 +62,9 @@ return array(
             'zfcuser_authentication_storage_backend_session' => array(
                 'ZfcUser\Factory\Authentication\Listener\RegenerateSessionIdentifierFactory'
             ),
+            'zfcuser_authentication_credentialprocessor_bcrypt' => array(
+                'ZfcUser\Factory\Authentication\Listener\RehashBcryptPasswordFactory'
+            ),
         ),
         'aliases' => array(
             'zfcuser_register_form_hydrator' => 'zfcuser_user_hydrator',
