@@ -39,26 +39,6 @@ class Module implements
         return include __DIR__ . '/config/module.config.php';
     }
 
-    public function getControllerPluginConfig()
-    {
-        return array(
-            'factories' => array(
-                'zfcUserAuthentication' => 'ZfcUser\Factory\Controller\Plugin\ZfcUserAuthenticationFactory',
-            ),
-        );
-    }
-
-    public function getViewHelperConfig()
-    {
-        return array(
-            'factories' => array(
-                'zfcUserDisplayName'    => 'ZfcUser\Factory\View\Helper\DisplayNameFactory',
-                'zfcUserIdentity'       => 'ZfcUser\Factory\View\Helper\IdentityFactory',
-                'zfcUserLoginWidget'    => 'ZfcUser\Factory\View\Helper\LoginWidgetFactory',
-            ),
-        );
-    }
-
     public function getServiceConfig()
     {
         return array(

@@ -58,18 +58,7 @@ return array(
         'aliases' => array(
             'zfcuser_register_form_hydrator' => 'zfcuser_user_hydrator',
             'zfcuser_zend_db_adapter' => 'Zend\Db\Adapter\Adapter',
-        ),
-    ),
-    'controller_plugins' => array(
-        'factories' => array(
-            'zfcUserAuthentication' => 'ZfcUser\Factory\Controller\Plugin\ZfcUserAuthenticationFactory',
-        ),
-    ),
-    'view_helpers' => array(
-        'factories' => array(
-            'zfcUserDisplayName'    => 'ZfcUser\Factory\View\Helper\DisplayNameFactory',
-            'zfcUserIdentity'       => 'ZfcUser\Factory\View\Helper\IdentityFactory',
-            'zfcUserLoginWidget'    => 'ZfcUser\Factory\View\Helper\LoginWidgetFactory',
+            'Zend\Authentication\AuthenticationService' => 'zfcuser_auth_service',
         ),
     ),
     'router' => array(

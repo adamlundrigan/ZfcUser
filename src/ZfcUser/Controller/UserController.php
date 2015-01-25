@@ -25,6 +25,7 @@ use Zend\Stdlib\Parameters;
 use Zend\View\Model\ViewModel;
 use ZfcUser\Service\User as UserService;
 use ZfcUser\Options\UserControllerOptionsInterface;
+use Zend\Authentication\AuthenticationService;
 
 class UserController extends AbstractActionController
 {
@@ -37,6 +38,11 @@ class UserController extends AbstractActionController
      * @var UserService
      */
     protected $userService;
+    
+    /**
+     * @var AuthenticationService
+     */
+    protected $authService;
 
     /**
      * @var Form
@@ -64,9 +70,10 @@ class UserController extends AbstractActionController
      */
     protected $options;
 
-    public function __construct($userService, $options, $registerForm, $loginForm)
+    public function __construct($userService, $authService, $options, $registerForm, $loginForm)
     {
         $this->userService = $userService;
+        $this->authService = $authService;
         $this->options = $options;
         $this->registerForm = $registerForm;
         $this->loginForm = $loginForm;
@@ -77,7 +84,7 @@ class UserController extends AbstractActionController
      */
     public function indexAction()
     {
-        if (!$this->zfcUserAuthentication()->hasIdentity()) {
+        if (!$this->identity()) {
             return $this->redirect()->toRoute(static::ROUTE_LOGIN);
         }
         return new ViewModel();
@@ -88,7 +95,7 @@ class UserController extends AbstractActionController
      */
     public function loginAction()
     {
-        if ($this->zfcUserAuthentication()->hasIdentity()) {
+        if ($this->identity()) {
             return $this->redirect()->toRoute($this->options->getLoginRedirectRoute());
         }
 
@@ -125,8 +132,8 @@ class UserController extends AbstractActionController
         }
 
         // clear adapters
-        $this->zfcUserAuthentication()->getAuthAdapter()->resetAdapters();
-        $this->zfcUserAuthentication()->getAuthService()->clearIdentity();
+        $this->authService->getAdapter()->resetAdapters();
+        $this->authService->clearIdentity();
 
         return $this->forward()->dispatch(static::CONTROLLER_NAME, array('action' => 'authenticate'));
     }
@@ -136,9 +143,9 @@ class UserController extends AbstractActionController
      */
     public function logoutAction()
     {
-        $this->zfcUserAuthentication()->getAuthAdapter()->resetAdapters();
-        $this->zfcUserAuthentication()->getAuthAdapter()->logoutAdapters();
-        $this->zfcUserAuthentication()->getAuthService()->clearIdentity();
+        $this->authService->getAdapter()->resetAdapters();
+        $this->authService->getAdapter()->logoutAdapters();
+        $this->authService->clearIdentity();
 
         $redirect = $this->params()->fromPost('redirect', $this->params()->fromQuery('redirect', false));
 
@@ -154,11 +161,11 @@ class UserController extends AbstractActionController
      */
     public function authenticateAction()
     {
-        if ($this->zfcUserAuthentication()->hasIdentity()) {
+        if ($this->identity()) {
             return $this->redirect()->toRoute($this->options->getLoginRedirectRoute());
         }
 
-        $adapter = $this->zfcUserAuthentication()->getAuthAdapter();
+        $adapter = $this->authService->getAdapter();
         $redirect = $this->params()->fromPost('redirect', $this->params()->fromQuery('redirect', false));
 
         $result = $adapter->prepareForAuthentication($this->getRequest());
@@ -168,7 +175,7 @@ class UserController extends AbstractActionController
             return $result;
         }
 
-        $auth = $this->zfcUserAuthentication()->getAuthService()->authenticate($adapter);
+        $auth = $this->authService->authenticate($adapter);
 
         if (!$auth->isValid()) {
             $this->flashMessenger()->setNamespace($this->loginNamespace)->addMessage($this->failedLoginMessage);
@@ -186,7 +193,7 @@ class UserController extends AbstractActionController
         $route = $this->options->getLoginRedirectRoute();
 
         if (is_callable($route)) {
-            $route = $route($this->zfcUserAuthentication()->getIdentity());
+            $route = $route($this->identity());
         }
 
         return $this->redirect()->toRoute($route);
@@ -198,7 +205,7 @@ class UserController extends AbstractActionController
     public function registerAction()
     {
         // if the user is logged in, we don't need to register
-        if ($this->zfcUserAuthentication()->hasIdentity()) {
+        if ($this->identity()) {
             // redirect to the login redirect route
             return $this->redirect()->toRoute($this->options->getLoginRedirectRoute());
         }

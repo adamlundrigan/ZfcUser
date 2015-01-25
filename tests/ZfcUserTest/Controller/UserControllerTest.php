@@ -22,11 +22,13 @@ class UserControllerTest extends \PHPUnit_Framework_TestCase
 
     public $pluginManagerPlugins = array();
 
-    protected $zfcUserAuthenticationPlugin;
+    protected $identityPlugin;
 
     protected $options;
 
     protected $userService;
+    
+    protected $authService;
 
     public function setUp()
     {
@@ -42,10 +44,11 @@ class UserControllerTest extends \PHPUnit_Framework_TestCase
             ->disableOriginalConstructor()
             ->getMock();
 
-        $controller = new Controller($this->userService, $this->options, $this->registerForm, $this->loginForm);
-        $this->controller = $controller;
+        $this->authService = $this->getMock('Zend\Authentication\AuthenticationService');
+        
+        $this->controller = new Controller($this->userService, $this->authService, $this->options, $this->registerForm, $this->loginForm);
 
-        $this->zfcUserAuthenticationPlugin = $this->getMock('ZfcUser\Controller\Plugin\ZfcUserAuthentication');
+        $this->identityPlugin = $this->getMock('Zend\Mvc\Controller\Plugin\Identity');
 
         $pluginManager = $this->getMock('Zend\Mvc\Controller\PluginManager', array('get'));
 
@@ -55,43 +58,23 @@ class UserControllerTest extends \PHPUnit_Framework_TestCase
 
         $this->pluginManager = $pluginManager;
 
-        $controller->setPluginManager($pluginManager);
+        $this->controller->setPluginManager($pluginManager);
     }
 
-    public function setUpZfcUserAuthenticationPlugin($option)
+    public function setUpIdentityPlugin($option)
     {
-        if (array_key_exists('hasIdentity', $option)) {
-            $return = (is_callable($option['hasIdentity']))
-                ? $this->returnCallback($option['hasIdentity'])
-                : $this->returnValue($option['hasIdentity']);
-            $this->zfcUserAuthenticationPlugin->expects($this->any())
-                 ->method('hasIdentity')
+        if (array_key_exists('__invoke', $option)) {
+            $return = (is_callable($option['__invoke']))
+                ? $this->returnCallback($option['__invoke'])
+                : $this->returnValue($option['__invoke']);
+            $this->identityPlugin->expects($this->any())
+                 ->method('__invoke')
                  ->will($return);
         }
 
-        if (array_key_exists('getAuthAdapter', $option)) {
-            $return = (is_callable($option['getAuthAdapter']))
-                ? $this->returnCallback($option['getAuthAdapter'])
-                : $this->returnValue($option['getAuthAdapter']);
+        $this->pluginManagerPlugins['identity'] = $this->identityPlugin;
 
-            $this->zfcUserAuthenticationPlugin->expects($this->any())
-                 ->method('getAuthAdapter')
-                 ->will($return);
-        }
-
-        if (array_key_exists('getAuthService', $option)) {
-            $return = (is_callable($option['getAuthService']))
-                ? $this->returnCallback($option['getAuthService'])
-                : $this->returnValue($option['getAuthService']);
-
-            $this->zfcUserAuthenticationPlugin->expects($this->any())
-                 ->method('getAuthService')
-                 ->will($return);
-        }
-
-        $this->pluginManagerPlugins['zfcUserAuthentication'] = $this->zfcUserAuthenticationPlugin;
-
-        return $this->zfcUserAuthenticationPlugin;
+        return $this->identityPlugin;
     }
 
     /**
@@ -102,8 +85,8 @@ class UserControllerTest extends \PHPUnit_Framework_TestCase
         $controller = $this->controller;
         $redirectRoute = $redirectRoute ?: $controller::ROUTE_LOGIN;
 
-        $this->setUpZfcUserAuthenticationPlugin(array(
-            'hasIdentity'=>$hasIdentity
+        $this->setUpIdentityPlugin(array(
+            '__invoke' => $hasIdentity ? $this->getMock('ZfcUser\Entity\UserInterface') : null
         ));
 
         $response = new Response();
@@ -134,8 +117,8 @@ class UserControllerTest extends \PHPUnit_Framework_TestCase
     public function testIndexActionLoggedIn()
     {
         $controller = $this->controller;
-        $this->setUpZfcUserAuthenticationPlugin(array(
-            'hasIdentity'=>true
+        $this->setUpIdentityPlugin(array(
+            '__invoke' => $this->getMock('ZfcUser\Entity\UserInterface')
         ));
 
         $result = $controller->indexAction();
@@ -153,8 +136,8 @@ class UserControllerTest extends \PHPUnit_Framework_TestCase
         $controller = $this->controller;
         $redirectUrl = 'localhost/redirect1';
 
-        $plugin = $this->setUpZfcUserAuthenticationPlugin(array(
-            'hasIdentity'=>false
+        $plugin = $this->setUpIdentityPlugin(array(
+            '__invoke'=> null
         ));
 
         $flashMessenger = $this->getMock(
@@ -210,14 +193,11 @@ class UserControllerTest extends \PHPUnit_Framework_TestCase
             $adapter->expects($this->once())
                     ->method('resetAdapters');
 
-            $service = $this->getMock('Zend\Authentication\AuthenticationService');
-            $service->expects($this->once())
-                    ->method('clearIdentity');
-
-            $plugin = $this->setUpZfcUserAuthenticationPlugin(array(
-                'getAuthAdapter'=>$adapter,
-                'getAuthService'=>$service
-            ));
+            $this->authService->expects($this->once())
+                 ->method('clearIdentity');
+            $this->authService->expects($this->any())
+                 ->method('getAdapter')
+                 ->will($this->returnValue($adapter));
 
             $form->expects($this->once())
                  ->method('setData')
@@ -284,8 +264,8 @@ class UserControllerTest extends \PHPUnit_Framework_TestCase
      */
     public function testLoginActionIsNotPost($redirect)
     {
-        $plugin = $this->setUpZfcUserAuthenticationPlugin(array(
-            'hasIdentity'=>false
+        $plugin = $this->setUpIdentityPlugin(array(
+            '__invoke'=>null
         ));
 
         $flashMessenger = $this->getMock('Zend\Mvc\Controller\Plugin\FlashMessenger');
@@ -355,15 +335,11 @@ class UserControllerTest extends \PHPUnit_Framework_TestCase
         $adapter->expects($this->once())
                 ->method('logoutAdapters');
 
-        $service = $this->getMock('Zend\Authentication\AuthenticationService');
-        $service->expects($this->once())
-                ->method('clearIdentity');
-
-        $this->setUpZfcUserAuthenticationPlugin(array(
-            'getAuthAdapter'=>$adapter,
-            'getAuthService'=>$service
-        ));
-
+        $this->authService->expects($this->once())
+             ->method('clearIdentity');
+        $this->authService->expects($this->any())
+             ->method('getAdapter')
+             ->will($this->returnValue($adapter));
 
         $params = $this->getMock('Zend\Mvc\Controller\Plugin\Params');
         $params->expects($this->any())
@@ -458,13 +434,12 @@ class UserControllerTest extends \PHPUnit_Framework_TestCase
                 ->with($request)
                 ->will($this->returnValue($prepareResult));
 
-        $service = $this->getMock('Zend\Authentication\AuthenticationService');
-
-
-        $this->setUpZfcUserAuthenticationPlugin(array(
-            'hasIdentity'=>false,
-            'getAuthAdapter'=>$adapter,
-            'getAuthService'=>$service
+        $this->authService->expects($this->any())
+             ->method('getAdapter')
+             ->will($this->returnValue($adapter));
+        
+        $this->setUpIdentityPlugin(array(
+            '__invoke'=>null,
         ));
 
         if (is_bool($prepareResult)) {
@@ -475,11 +450,11 @@ class UserControllerTest extends \PHPUnit_Framework_TestCase
             $authResult->expects($this->once())
                        ->method('isValid')
                        ->will($this->returnValue($authValid));
-
-            $service->expects($this->once())
-                    ->method('authenticate')
-                    ->with($adapter)
-                    ->will($this->returnValue($authResult));
+            
+            $this->authService->expects($this->once())
+                 ->method('authenticate')
+                 ->with($adapter)
+                 ->will($this->returnValue($authResult));
 
             $redirect = $this->getMock('Zend\Mvc\Controller\Plugin\Redirect');
             $this->pluginManagerPlugins['redirect'] = $redirect;
@@ -552,8 +527,8 @@ class UserControllerTest extends \PHPUnit_Framework_TestCase
     {
         $controller = $this->controller;
 
-        $this->setUpZfcUserAuthenticationPlugin(array(
-            'hasIdentity'=>false
+        $this->setUpIdentityPlugin(array(
+            '__invoke'=>null
         ));
 
         $this->options->expects($this->once())
@@ -580,8 +555,8 @@ class UserControllerTest extends \PHPUnit_Framework_TestCase
         $route_url = '/user/register';
         $expectedResult = null;
 
-        $this->setUpZfcUserAuthenticationPlugin(array(
-            'hasIdentity' => false
+        $this->setUpIdentityPlugin(array(
+            '__invoke' => null
         ));
 
         $this->options->expects($this->any())
