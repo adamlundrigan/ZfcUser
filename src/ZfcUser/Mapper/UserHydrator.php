@@ -6,23 +6,12 @@ use Zend\Crypt\Password\PasswordInterface as ZendCryptPassword;
 use Zend\Stdlib\Hydrator\ClassMethods;
 use ZfcUser\Entity\UserInterface as UserEntity;
 
-class UserHydrator extends ClassMethods implements HydratorInterface
+class UserHydrator extends ClassMethods
 {
-    /**
-     * @var ZendCryptPassword
-     */
-    private $cryptoService;
-
-    /**
-     * @param ZendCryptPassword $cryptoService
-     * @param bool|array        $underscoreSeparatedKeys
-     */
-    public function __construct(
-        ZendCryptPassword $cryptoService,
-        $underscoreSeparatedKeys = true
-    ) {
-        parent::__construct($underscoreSeparatedKeys);
-        $this->cryptoService = $cryptoService;
+    public function __construct()
+    {
+        // We require that underscore be the key separator
+        parent::__construct(true);
     }
 
     /**
@@ -52,14 +41,6 @@ class UserHydrator extends ClassMethods implements HydratorInterface
         $this->guardUserObject($object);
         $data = $this->mapField('user_id', 'id', $data);
         return parent::hydrate($data, $object);
-    }
-
-    /**
-     * @return ZendCryptPassword
-     */
-    public function getCryptoService()
-    {
-        return $this->cryptoService;
     }
 
     /**

@@ -7,9 +7,10 @@ use Zend\Form\FormInterface as Form;
 use Zend\ServiceManager\ServiceManager;
 use Zend\ServiceManager\ServiceManagerAwareInterface;
 use ZfcBase\EventManager\EventProvider;
-use ZfcUser\Mapper\HydratorInterface as Hydrator;
+use Zend\Stdlib\Hydrator\HydratorInterface as Hydrator;
 use ZfcUser\Mapper\UserInterface as UserMapper;
 use ZfcUser\Options\UserServiceOptionsInterface as ServiceOptions;
+use Zend\Crypt\Password\PasswordInterface;
 
 class User extends EventProvider implements ServiceManagerAwareInterface
 {
@@ -47,6 +48,11 @@ class User extends EventProvider implements ServiceManagerAwareInterface
      * @var Hydrator
      */
     protected $formHydrator;
+    
+    /**
+     * @var PasswordInterface
+     */
+    protected $credentialProcessor;
 
     /**
      * createFromForm
@@ -68,7 +74,7 @@ class User extends EventProvider implements ServiceManagerAwareInterface
             $user   = $form->getData();
             $events = $this->getEventManager();
 
-            $user->setPassword($this->getFormHydrator()->getCryptoService()->create($user->getPassword()));
+            $user->setPassword($this->getCredentialProcessor()->create($user->getPassword()));
 
             $events->trigger(__FUNCTION__, $this, compact('user', 'form'));
             $this->getUserMapper()->insert($user);
@@ -220,6 +226,34 @@ class User extends EventProvider implements ServiceManagerAwareInterface
     public function setFormHydrator(Hydrator $formHydrator)
     {
         $this->formHydrator = $formHydrator;
+        return $this;
+    }
+
+    /**
+     * Return the credential processor
+     *
+     * @return PasswordInterface
+     */
+    public function getCredentialProcessor()
+    {
+        if (!$this->credentialProcessor instanceof PasswordInterface) {
+            $this->setCredentialProcessor(
+                $this->serviceManager->get('zfcuser_authentication_credentialprocessor')
+            );
+        }
+
+        return $this->credentialProcessor;
+    }
+
+    /**
+     * Set the credential processor to use
+     *
+     * @param PasswordInterface $obj
+     * @return User
+     */
+    public function setCredentialProcessor(PasswordInterface $obj)
+    {
+        $this->credentialProcessor = $obj;
         return $this;
     }
 }

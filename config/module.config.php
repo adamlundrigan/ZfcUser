@@ -55,7 +55,8 @@ return array(
             'zfcuser_register_form'                         => 'ZfcUser\Factory\Form\RegisterFormFactory',
             'zfcuser_change_password_form'                  => 'ZfcUser\Factory\Form\ChangePasswordFormFactory',
             'zfcuser_change_email_form'                     => 'ZfcUser\Factory\Form\ChangeEmailFormFactory',
-            'zfcuser_user_mapper'                           => 'ZfcUser\Factory\UserMapperFactory',
+            'zfcuser_user_mapper'                           => 'ZfcUser\Factory\Mapper\UserMapperFactory',
+            'zfcuser_user_tablegateway'                     => 'ZfcUser\Factory\Mapper\UserTableGatewayFactory',
             'zfcuser_user_hydrator'                         => 'ZfcUser\Factory\Mapper\UserHydratorFactory',
         ),
         'delegators' => array(

@@ -2,67 +2,129 @@
 
 namespace ZfcUser\Mapper;
 
-use ZfcBase\Mapper\AbstractDbMapper;
-use Zend\Stdlib\Hydrator\HydratorInterface as Hydrator;
+use Zend\Db\TableGateway\AbstractTableGateway;
+use Zend\Stdlib\Hydrator\HydratorInterface;
+use Zend\EventManager\EventManagerAwareInterface;
+use Zend\EventManager\EventManagerAwareTrait;
+use ZfcUser\Entity\UserInterface as UserEntityInterface;
 
-class User extends AbstractDbMapper implements UserInterface
+class User implements UserInterface
 {
-    protected $tableName  = 'user';
+    use EventManagerAwareTrait;
+    
+    /**
+     * @var AbstractTableGateway
+     */
+    protected $table;
+    
+    /**
+     * @var HydratorInterface
+     */
+    protected $hydrator;
+    
+    /**
+     * 
+     * @param AbstractTableGateway $tg TableGateway instance for user table
+     * @param HydratorInterface $hydrator Hydrator for User entity
+     */
+    public function __construct(AbstractTableGateway $tg, HydratorInterface $hydrator)
+    {
+        $this->table = $tg;
+        $this->hydrator = $hydrator;
+    }
 
+    /**
+     * Retrieve user account by email address
+     * 
+     * @param string $email
+     * @return \ZfcUser\Entity\UserInterface|null
+     */
     public function findByEmail($email)
     {
-        $select = $this->getSelect()
-                       ->where(array('email' => $email));
-
-        $entity = $this->select($select)->current();
-        $this->getEventManager()->trigger('find', $this, array('entity' => $entity));
+        $entity = $this->table->select(['email' => $email])->current();
+        $this->getEventManager()->trigger('find', $this, ['entity' => $entity]);
         return $entity;
     }
 
+    /**
+     * Retrieve user account by username
+     * 
+     * @param string $username
+     * @return \ZfcUser\Entity\UserInterface|null
+     */
     public function findByUsername($username)
     {
-        $select = $this->getSelect()
-                       ->where(array('username' => $username));
-
-        $entity = $this->select($select)->current();
-        $this->getEventManager()->trigger('find', $this, array('entity' => $entity));
+        $entity = $this->table->select(['username' => $username])->current();
+        $this->getEventManager()->trigger('find', $this, ['entity' => $entity]);
         return $entity;
     }
 
+    /**
+     * Retrieve user account by primary key
+     * 
+     * @param int|string $id
+     * @return \ZfcUser\Entity\UserInterface|null
+     */
     public function findById($id)
     {
-        $select = $this->getSelect()
-                       ->where(array('user_id' => $id));
-
-        $entity = $this->select($select)->current();
-        $this->getEventManager()->trigger('find', $this, array('entity' => $entity));
+        $entity = $this->table->select(['user_id' => $id])->current();
+        $this->getEventManager()->trigger('find', $this, ['entity' => $entity]);
         return $entity;
     }
 
-    public function getTableName()
+    /**
+     * Persist a new user entity instance
+     * 
+     * @param \ZfcUser\Entity\UserInterface $entity
+     * @return boolean
+     */
+    public function insert(UserEntityInterface $entity)
     {
-        return $this->tableName;
-    }
-
-    public function setTableName($tableName)
-    {
-        $this->tableName = $tableName;
-    }
-
-    public function insert($entity, $tableName = null, Hydrator $hydrator = null)
-    {
-        $hydrator = $hydrator ?: $this->getHydrator();
-        $result = parent::insert($entity, $tableName, $hydrator);
-        $hydrator->hydrate(array('user_id' => $result->getGeneratedValue()), $entity);
-        return $result;
-    }
-
-    public function update($entity, $where = null, $tableName = null, Hydrator $hydrator = null)
-    {
-        if (!$where) {
-            $where = array('user_id' => $entity->getId());
+        $data = $this->hydrator->extract($entity);
+        if (!is_array($data) || empty($data)) {
+            return false;
         }
 
-        return parent::update($entity, $where, $tableName, $hydrator);
+        if ($this->table->insert($data) === 0) {
+            return false;
+        }
+        
+        $this->hydrator->hydrate(
+            ['user_id' => $this->table->getLastInsertValue()],
+            $entity
+        );
+        return true;
+    }
+
+    /**
+     * Update a previously persisted user entity
+     * 
+     * @param \ZfcUser\Entity\UserInterface $entity
+     * @return boolean
+     */
+    public function update(UserEntityInterface $entity)
+    {
+        $data = $this->hydrator->extract($entity);
+        if (!is_array($data) || empty($data)) {
+            return false;
+        }
+
+        return $this->table->update($data, ['user_id' => $data['user_id']]) === 1;
+    }
+
+    /**
+     * Delete a previously persisted user entity
+     * 
+     * @param \ZfcUser\Entity\UserInterface $entity
+     * @return boolean
+     */
+    public function delete(UserEntityInterface $entity)
+    {
+        $data = $this->hydrator->extract($entity);
+        if (!is_array($data) || empty($data)) {
+            return false;
+        }
+        
+        return $this->table->delete(['user_id' => $data['user_id']]) === 1;
     }
 }
